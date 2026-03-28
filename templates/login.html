@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}Kirish — Mini Chat{% endblock %}
+
+{% block content %}
+<h1 class="page-heading">Kirish</h1>
+<p class="small">Tizimga kirish uchun foydalanuvchi nomi va parolingizni kiriting.</p>
+
+<form class="form" method="post" action="{{ url_for('login') }}">
+  <label>
+    Foydalanuvchi nomi
+    <input name="username" type="text" required autofocus />
+  </label>
+  <label>
+    Parol
+    <input name="password" type="password" required />
+  </label>
+  <button type="submit" class="btn">Kirish</button>
+</form>
+
+<p class="small">Yoki <a href="{{ url_for('register') }}">ro'yxatdan o'ting</a></p>
+{% endblock %}

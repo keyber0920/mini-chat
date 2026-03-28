@@ -1,0 +1,375 @@
+{% extends "base.html" %}
+
+{% block title %}Chat — Mini Chat{% endblock %}
+
+{% block content %}
+<div class="chat-wrapper">
+  <aside class="chat-sidebar">
+    <h2 class="page-heading">Kimga yozmoqchisiz?</h2>
+
+    <div class="friend-panel">
+      <div class="friend-panel__header">
+        <div>
+          <h3 class="friend-panel__title">Sizning IDingiz</h3>
+          <p class="friend-id">#{{ current_user.id }}</p>
+        </div>
+      </div>
+
+      <p class="small">Do'stlaringizni ID orqali qo'shishingiz mumkin.</p>
+
+      <form class="friend-form" method="post" action="{{ url_for('add_friend') }}">
+        <label class="friend-form__label">
+          Do'st qo'shish (ID)
+          <input class="friend-form__input" name="friend_id" type="number" min="1" required placeholder="Foydalanuvchi ID" />
+        </label>
+        <button class="btn" type="submit">Qo'shish</button>
+      </form>
+
+      <div class="friends-list">
+        <h4 class="friends-list__title">Do'stlaringiz</h4>
+        <ul>
+          {% if users %}
+          {% for u in users %}
+          <li class="friend-item" data-id="{{ u.id }}">
+            <span class="friend-name">{{ u.username }}</span>
+            <span class="friend-meta">#{{ u.id }}</span>
+          </li>
+          {% endfor %}
+          {% else %}
+          <li class="friend-empty">Hozircha do'stlar yo'q.</li>
+          {% endif %}
+        </ul>
+      </div>
+    </div>
+
+    <form id="recipientForm">
+      <select name="recipient_id" id="recipientSelect">
+        <option value="" disabled selected>Foydalanuvchini tanlang...</option>
+        {% for u in users %}
+        {% if u.id != current_user.id %}
+        <option value="{{ u.id }}">{{ u.username }}</option>
+        {% endif %}
+        {% endfor %}
+      </select>
+    </form>
+
+    <div class="note">
+      <p class="small">Tanlangan foydalanuvchi bilan faqat shaxsiy xabarlar almashiladi.</p>
+    </div>
+  </aside>
+
+  <section class="chat" id="chat">
+    <div class="chat-header">
+      <h1 class="page-heading">Chat</h1>
+      <div class="header-right">
+        <span id="chatStatus" class="status">Yuklanmoqda...</span>
+        <span id="notificationBadge" class="notification-badge hidden" aria-live="polite">0</span>
+      </div>
+    </div>
+
+    <div id="messages" class="message-list"></div>
+
+    <form class="chat-form" method="post" action="{{ url_for('send_message') }}" id="sendForm">
+      <input type="hidden" name="recipient_id" id="recipientInput" />
+      <textarea name="text" id="text" rows="2" placeholder="Xabar yozing..." required></textarea>
+      <button class="btn" type="submit">Yuborish</button>
+    </form>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const chatUrl = "{{ url_for('messages') }}";
+const sendUrl = "{{ url_for('send_message') }}";
+const messagesEl = document.getElementById("messages");
+const statusEl = document.getElementById("chatStatus");
+const recipientSelect = document.getElementById("recipientSelect");
+const recipientInput = document.getElementById("recipientInput");
+const notificationBadge = document.getElementById("notificationBadge");
+
+// Current logged-in user ID (injected from server)
+const currentUserId = {{ current_user.id }};
+let selectedRecipientId = null;
+const sendText = document.getElementById("text");
+const sendButton = document.querySelector("#sendForm button[type=submit]");
+const sendForm = document.getElementById("sendForm");
+
+function saveSelectedRecipient() {
+  if (selectedRecipientId) {
+    localStorage.setItem("mini_chat_recipientId", String(selectedRecipientId));
+  } else {
+    localStorage.removeItem("mini_chat_recipientId");
+  }
+}
+
+const chatTitle = document.querySelector(".chat-header .page-heading");
+
+function updateFormState() {
+  const hasRecipient = Boolean(selectedRecipientId);
+  sendText.disabled = !hasRecipient;
+  sendButton.disabled = !hasRecipient;
+
+  if (!hasRecipient) {
+    statusEl.textContent = "Foydalanuvchi tanlang.";
+    chatTitle.textContent = "Chat";
+    messagesEl.innerHTML = "";
+    return;
+  }
+
+  const selectedOption = recipientSelect.selectedOptions[0];
+  const recipientName = selectedOption ? selectedOption.textContent : "tanlangan foydalanuvchi";
+  chatTitle.textContent = `Suhbat: ${recipientName}`;
+  statusEl.textContent = "Yuklanmoqda...";
+}
+
+function formatMessage(msg) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "message";
+
+  if (msg.sender_id === currentUserId) {
+    wrapper.classList.add("message--outgoing");
+  } else {
+    wrapper.classList.add("message--incoming");
+  }
+
+  const header = document.createElement("div");
+  header.className = "message-header";
+  header.textContent = `${msg.sender}`;
+
+  const meta = document.createElement("div");
+  meta.className = "message-meta";
+  meta.textContent = msg.time;
+
+  const body = document.createElement("div");
+  body.className = "message-body";
+  body.textContent = msg.text;
+
+  wrapper.appendChild(header);
+  wrapper.appendChild(meta);
+  wrapper.appendChild(body);
+
+  if (msg.recipient) {
+    const note = document.createElement("div");
+    note.className = "message-recipient";
+    note.textContent = `→ ${msg.recipient}`;
+    wrapper.appendChild(note);
+  }
+
+  return wrapper;
+}
+
+function isMessageRelevant(msg) {
+  // Only show messages between the current user and the selected recipient.
+  if (!selectedRecipientId) {
+    return false;
+  }
+
+  return (
+    (msg.sender_id === currentUserId && msg.recipient_id === selectedRecipientId) ||
+    (msg.sender_id === selectedRecipientId && msg.recipient_id === currentUserId)
+  );
+}
+
+function updateFriendListSelection() {
+  document.querySelectorAll(".friend-item").forEach((item) => {
+    const id = Number(item.dataset.id);
+    item.classList.toggle("active", id === selectedRecipientId);
+  });
+}
+
+function bindFriendListClicks() {
+  document.querySelectorAll(".friend-item").forEach((item) => {
+    item.addEventListener("click", () => {
+      const id = Number(item.dataset.id);
+      if (!id) return;
+
+      recipientSelect.value = String(id);
+      recipientInput.value = String(id);
+      selectedRecipientId = id;
+      saveSelectedRecipient();
+      setNotificationCount(0);
+      updateFormState();
+      refreshMessages();
+    });
+  });
+}
+
+let lastMessageId = Number(localStorage.getItem("mini_chat_lastMessageId") || 0);
+let unseenCount = 0;
+
+function setNotificationCount(count) {
+  unseenCount = count;
+  if (!count) {
+    notificationBadge.classList.add("hidden");
+    document.title = "Chat — Mini Chat";
+  } else {
+    notificationBadge.textContent = count;
+    notificationBadge.classList.remove("hidden");
+    document.title = `(${count}) Chat — Mini Chat`;
+  }
+}
+
+function tryNotify(newMsgs) {
+  const incomingForUser = newMsgs.filter((m) => {
+    // Notify only for public messages or private messages addressed to this user
+    return !m.recipient_id || m.recipient_id === currentUserId;
+  });
+
+  if (!incomingForUser.length) return;
+
+  if (Notification.permission === "granted") {
+    const title = incomingForUser.length === 1 ? "Yangi xabar" : "Yangi xabarlar";
+    new Notification(title, {
+      body: incomingForUser[0].text.slice(0, 120),
+      silent: true,
+    });
+  }
+}
+
+async function refreshMessages() {
+  if (!selectedRecipientId) {
+    return;
+  }
+
+  try {
+    const res = await fetch(chatUrl, {
+      cache: "no-store",
+      headers: { "Content-Type": "application/json" },
+    });
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+    const data = await res.json();
+
+    const incoming = data.messages;
+    if (!Array.isArray(incoming)) return;
+
+    // Determine new messages since last seen
+    const newMsgs = incoming.filter((m) => m.id > lastMessageId);
+    if (newMsgs.length) {
+      const nextId = Math.max(...newMsgs.map((m) => m.id));
+      lastMessageId = Math.max(lastMessageId, nextId);
+      localStorage.setItem("mini_chat_lastMessageId", String(lastMessageId));
+
+      // Only update count for messages that are addressed to the current user
+      const newRelevant = newMsgs.filter((m) => m.recipient_id === currentUserId);
+      if (newRelevant.length) {
+        setNotificationCount(unseenCount + newRelevant.length);
+        tryNotify(newRelevant);
+      }
+    }
+
+    messagesEl.innerHTML = "";
+    const filtered = incoming.filter(isMessageRelevant);
+    for (const msg of filtered) {
+      messagesEl.appendChild(formatMessage(msg));
+    }
+
+    // Keep view scrolled to the latest message.
+    if (messagesEl.lastElementChild) {
+      messagesEl.lastElementChild.scrollIntoView({ block: "end", behavior: "smooth" });
+    }
+
+    statusEl.textContent = `So'nggi xabar: ${filtered.length} ta`;
+  } catch (err) {
+    statusEl.textContent = "Xabarlarni yuklashda xatolik yuz berdi.";
+    console.error(err);
+  }
+}
+
+recipientSelect.addEventListener("change", () => {
+  recipientInput.value = recipientSelect.value;
+  selectedRecipientId = recipientSelect.value ? Number(recipientSelect.value) : null;
+  saveSelectedRecipient();
+  setNotificationCount(0);
+  updateFormState();
+  updateFriendListSelection();
+  refreshMessages();
+});
+
+sendForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  if (!selectedRecipientId) {
+    return;
+  }
+
+  const text = sendText.value.trim();
+  if (!text) {
+    return;
+  }
+
+  sendButton.disabled = true;
+  statusEl.textContent = "Yuborilmoqda...";
+
+  try {
+    const formData = new FormData();
+    formData.append("recipient_id", String(selectedRecipientId));
+    formData.append("text", text);
+
+    const res = await fetch(sendUrl, {
+      method: "POST",
+      headers: {
+        "X-Requested-With": "XMLHttpRequest",
+        Accept: "application/json",
+      },
+      body: formData,
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data?.success === false) {
+      throw new Error(data?.error || `HTTP ${res.status}`);
+    }
+
+    sendText.value = "";
+    sendText.focus();
+    setNotificationCount(0);
+    refreshMessages();
+  } catch (err) {
+    statusEl.textContent = "Xabar yuborishda xatolik yuz berdi.";
+    console.error(err);
+  } finally {
+    sendButton.disabled = false;
+  }
+});
+
+// Send message when user presses Enter (shift+Enter for newline)
+sendText.addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && !event.shiftKey) {
+    event.preventDefault();
+    sendButton.click();
+  }
+});
+
+// Request notification permission once
+window.addEventListener("load", () => {
+  const savedRecipient = localStorage.getItem("mini_chat_recipientId");
+  if (!recipientSelect.value && savedRecipient) {
+    const option = Array.from(recipientSelect.options).find((o) => o.value === savedRecipient);
+    if (option) {
+      recipientSelect.value = savedRecipient;
+    }
+  }
+
+  recipientInput.value = recipientSelect.value;
+  selectedRecipientId = recipientSelect.value ? Number(recipientSelect.value) : null;
+  updateFormState();
+  bindFriendListClicks();
+  updateFriendListSelection();
+
+  if ("Notification" in window && Notification.permission === "default") {
+    Notification.requestPermission();
+  }
+  refreshMessages();
+});
+
+window.addEventListener("focus", () => {
+  // Clear indicators when user returns
+  setNotificationCount(0);
+});
+
+// Har 4 soniyada yangilash
+setInterval(refreshMessages, 4000);
+</script>
+{% endblock %}

@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="uz">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}Mini Chat{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="container">
+        <a class="brand" href="{{ url_for('index') }}">Mini Chat Sayti</a>
+        <nav>
+          {% if current_user %}
+          <span class="nav-item">Assalomu alaykum, <strong>{{ current_user.username }}</strong></span>
+          <a class="nav-item" href="{{ url_for('logout') }}">Chiqish</a>
+          {% else %}
+          <a class="nav-item" href="{{ url_for('login') }}">Kirish</a>
+          <a class="nav-item" href="{{ url_for('register') }}">Ro'yxatdan o'tish</a>
+          {% endif %}
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      {% with messages = get_flashed_messages() %}
+      {% if messages %}
+      <div class="flash">
+        {% for msg in messages %}
+        <p>{{ msg }}</p>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+      <div class="container">
+        <p>Flask Mini Chat Sayti — o'quv maqsadlar uchun.</p>
+      </div>
+    </footer>
+
+    {% block scripts %}{% endblock %}
+  </body>
+</html>
