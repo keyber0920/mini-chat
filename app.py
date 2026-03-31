@@ -8,8 +8,8 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
+app = Flask(__name__)
 def create_app(test_config=None):
-    app = Flask(__name__)
     app.config.from_mapping(
         SECRET_KEY=os.environ.get("SECRET_KEY", "dev_secret_key"),
         SQLALCHEMY_DATABASE_URI=(
@@ -284,9 +284,9 @@ class Message(db.Model):
     recipient = db.relationship("User", back_populates="messages_received", foreign_keys=[recipient_id])
 
 
-app = create_app()
 
 if __name__ == "__main__":
+    app = create_app()
     # Allow overriding host/port via environment variables for easy deployment.
     host = os.environ.get("HOST", "0.0.0.0")
     port = int(os.environ.get("PORT", "5000"))
