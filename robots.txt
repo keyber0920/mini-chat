@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://shaxa008.pythonanywhere.com/sitemap.xml
