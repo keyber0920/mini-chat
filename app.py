@@ -303,4 +303,4 @@ application = app
 
 @app.route('/google123456789.html')
 def verify():
-    return send_from_directory('static', 'google123456789.html')
+    return send_from_directory('static', 'google4d8d977b196abeb8.html')
