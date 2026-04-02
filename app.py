@@ -105,7 +105,7 @@ def create_app(test_config=None):
 
     @app.route("/google4d8d977b196abeb8.html")
     def google_verification():
-        return send_from_directory('static', 'google4d8d977b196abeb8.html')
+        return send_from_directory(os.path.join(BASE_DIR, 'static'), 'google4d8d977b196abeb8.html')
 
     @app.route("/chat")
     def chat():
