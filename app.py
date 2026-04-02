@@ -9,6 +9,10 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
+# Database models
+
+db = SQLAlchemy()
+
 def create_app(test_config=None):
     app = Flask(__name__)
     app.config.from_mapping(
@@ -98,6 +102,10 @@ def create_app(test_config=None):
     def logout():
         session.clear()
         return redirect(url_for("login"))
+
+    @app.route("/google4d8d977b196abeb8.html")
+    def google_verification():
+        return send_from_directory('static', 'google4d8d977b196abeb8.html')
 
     @app.route("/chat")
     def chat():
@@ -244,8 +252,6 @@ def create_app(test_config=None):
 
 # Database models
 
-db = SQLAlchemy()
-
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -301,6 +307,6 @@ app = create_app()
 application = app
 
 
-@app.route('/google123456789.html')
+@app.route('/google4d8d977b196abeb8.html')
 def verify():
     return send_from_directory('static', 'google4d8d977b196abeb8.html')
