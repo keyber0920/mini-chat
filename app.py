@@ -113,6 +113,26 @@ def create_app(test_config=None):
         except FileNotFoundError:
             abort(404)
 
+    @app.route("/sitemap.xml")
+    def sitemap():
+        file_path = os.path.join(BASE_DIR, 'sitemap.xml')
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            return content, 200, {'Content-Type': 'application/xml; charset=utf-8'}
+        except FileNotFoundError:
+            abort(404)
+
+    @app.route("/robots.txt")
+    def robots():
+        file_path = os.path.join(BASE_DIR, 'robots.txt')
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            return content, 200, {'Content-Type': 'text/plain; charset=utf-8'}
+        except FileNotFoundError:
+            abort(404)
+
     @app.route("/chat")
     def chat():
         user = current_user()
