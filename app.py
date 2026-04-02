@@ -1,5 +1,6 @@
 import os
 from datetime import datetime
+from flask import Flask, send_from_directory
 
 from flask import (Flask, abort, flash, redirect, render_template, request,
                    session, url_for)
@@ -298,3 +299,8 @@ if __name__ == "__main__":
 application = create_app()
 app = create_app()
 application = app
+
+
+@app.route('/google123456789.html')
+def verify():
+    return send_from_directory('static', 'google123456789.html')
