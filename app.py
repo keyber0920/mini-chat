@@ -294,3 +294,7 @@ if __name__ == "__main__":
 
     app.run(host=host, port=port, debug=debug)
 
+
+application = create_app()
+app = create_app()
+application = app
