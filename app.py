@@ -105,7 +105,13 @@ def create_app(test_config=None):
 
     @app.route("/google4d8d977b196abeb8.html")
     def google_verification():
-        return send_from_directory(os.path.join(BASE_DIR, 'static'), 'google4d8d977b196abeb8.html')
+        file_path = os.path.join(BASE_DIR, 'static', 'google4d8d977b196abeb8.html')
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            return content, 200, {'Content-Type': 'text/html; charset=utf-8'}
+        except FileNotFoundError:
+            abort(404)
 
     @app.route("/chat")
     def chat():
